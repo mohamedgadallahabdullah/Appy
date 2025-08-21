@@ -9,11 +9,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4   # تحديث checkout
 
       # Cache buildozer
       - name: Cache Buildozer
-        uses: actions/cache@v4
+        uses: actions/cache@v4      # تحديث cache
         with:
           path: .buildozer
           key: ${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
@@ -24,7 +24,7 @@ jobs:
 
       # Build APK using Buildozer action
       - name: Build with Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v4
+        uses: ArtemSBulgakov/buildozer-action@v1
         id: buildozer
         with:
           command: android debug
@@ -32,7 +32,7 @@ jobs:
 
       # Upload APK artifact
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4   # تحديث upload-artifact
         with:
           name: package
           path: ${{ steps.buildozer.outputs.filename }}
