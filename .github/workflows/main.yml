@@ -1,12 +1,8 @@
-name: CI
+name: Build APK
 
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-  schedule:
-    - cron: '0 0 1,15 * *'
 
 jobs:
   build:
@@ -15,65 +11,28 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Remove .extraheader configuration entry
-        run: git config --unset http.https://github.com/.extraheader || true
-
-      - name: Get Date
-        id: get-date
-        run: |
-          echo "$(date -u "+%Y%m%d")" > date.txt
-          sudo apt-get update
-          sudo apt-get install build-essential
-          sudo apt-get install libstdc++6
-          sudo apt-get install aidl 
-        shell: bash
-
-	- name: Cache Buildozer global directory
+      # Cache buildozer
+      - name: Cache Buildozer
         uses: actions/cache@v2
         with:
-          path: .buildozer_global
-          key: buildozer-global-91abe1f7b1d3dcae6f9921b03a0ccd2957e79c3ec045e462082c9a22af9192b6
-
-	- uses: actions/cache@v2
-        with:
           path: .buildozer
-          key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('buildozer.spec') }}
+          key: ${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
 
-	- name: Cache Buildozer directories
-	  uses: actions/cache@v2
-	  with:
-	    path: |
-      		.buildozer_global
-      		.buildozer
-   	    key: ${{ runner.os }}--${{ hashFiles('.buildozer-global/*.txt') }}
+      # Install Android SDK
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v2
 
-	- name: Install Android SDK
-          uses: android-actions/setup-android@v2
-
-	- name: Add Android SDK to PATH
-           run: echo "$ANDROID_SDK_ROOT/tools/bin:${ANDROID_SDK_ROOT}/platform-tools" >> $GITHUB_PATH
-
-	- name: Create dummy AIDL file
-           run: echo "interface Dummy {}" > Dummy.aidl
-
-	- name: Verify dummy AIDL file
-           run: aidl Dummy.aidl || true
-
-	- name: Set aidl path for Buildozer
-           run: echo "BUILD_AIDL_PATH=/path/to/your/aidl" >> $GITHUB_ENV
-
-	- name: Verify aidl installation
-           run: aidl --version || true
-
-	- name: Build with Buildozer
-          uses: ArtemSBulgakov/buildozer-action@v1
-          id: buildozer
-          with:
-          command: buildozer -v android debug
+      # Build APK using Buildozer action
+      - name: Build with Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        id: buildozer
+        with:
+          command: android debug
           buildozer_version: master
 
-	- name: Upload artifacts
-          uses: actions/upload-artifact@v2
-          with:
+      # Upload APK artifact
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
           name: package
           path: ${{ steps.buildozer.outputs.filename }}
