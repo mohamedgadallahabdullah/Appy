@@ -24,17 +24,17 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # تنزيل build-tools اللي فيها aidl
+      # تنزيل build-tools الأحدث (فيها aidl)
       - name: Install Android build-tools
         run: |
           yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-30" "build-tools;33.0.2"
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       # إضافة aidl للـ PATH
       - name: Add AIDL to PATH
-        run: echo "${ANDROID_SDK_ROOT}/build-tools/33.0.2" >> $GITHUB_PATH
+        run: echo "${ANDROID_SDK_ROOT}/build-tools/34.0.0" >> $GITHUB_PATH
 
-      # التحقق من وجود aidl (إجباري)
+      # التحقق من وجود aidl
       - name: Verify AIDL
         run: |
           if ! command -v aidl &> /dev/null
