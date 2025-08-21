@@ -1,47 +1,54 @@
-name: CI
+name: Build APK with Buildozer
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-  schedule:
-    - cron: '0 0 1,15 * *'
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Get Date & Install Dependencies
-        id: get-date
+      # تثبيت المتطلبات الأساسية
+      - name: Install dependencies
         run: |
-          echo "date=$(date -u +%Y%m%d)" >> $GITHUB_OUTPUT
           sudo apt-get update
-          sudo apt-get install -y build-essential libstdc++6 aidl
+          sudo apt-get install -y build-essential libstdc++6
 
-      - name: Cache Buildozer global directory
+      # تنزيل Android SDK + build-tools
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build-tools
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-30" "build-tools;30.0.3"
+
+      # التحقق من وجود aidl
+      - name: Verify AIDL
+        run: |
+          which aidl || echo "aidl not found!"
+          aidl --version || true
+
+      # Cache buildozer directories (v4)
+      - name: Cache Buildozer global
         uses: actions/cache@v4
         with:
           path: .buildozer_global
           key: buildozer-global-${{ runner.os }}
 
-      - uses: actions/cache@v4
+      - name: Cache Buildozer
+        uses: actions/cache@v4
         with:
           path: .buildozer
-          key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('buildozer.spec') }}
+          key: ${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
 
-      - name: Install Android SDK
-        uses: android-actions/setup-android@v2
-
-      - name: Add Android SDK to PATH
-        run: echo "$ANDROID_SDK_ROOT/tools/bin:${ANDROID_SDK_ROOT}/platform-tools" >> $GITHUB_PATH
-
-      - name: Verify aidl installation
-        run: aidl --version || true
-
+      # Build باستخدام Buildozer
       - name: Build with Buildozer
         uses: ArtemSBulgakov/buildozer-action@v1
         id: buildozer
@@ -49,8 +56,9 @@ jobs:
           command: buildozer -v android debug
           buildozer_version: master
 
-      - name: Upload artifacts
+      # رفع الـ APK الناتج (v4)
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: package
-          path: ${{ steps.buildozer.outputs.filename }}
+          name: debug-apk
+          path: ./bin/*-debug.apk
