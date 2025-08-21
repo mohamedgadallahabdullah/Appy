@@ -1,38 +1,56 @@
-name: Build APK
+name: CI
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 0 1,15 * *'
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4   # تحديث checkout
+      - uses: actions/checkout@v4
 
-      # Cache buildozer
-      - name: Cache Buildozer
-        uses: actions/cache@v4      # تحديث cache
+      - name: Get Date & Install Dependencies
+        id: get-date
+        run: |
+          echo "date=$(date -u +%Y%m%d)" >> $GITHUB_OUTPUT
+          sudo apt-get update
+          sudo apt-get install -y build-essential libstdc++6 aidl
+
+      - name: Cache Buildozer global directory
+        uses: actions/cache@v4
+        with:
+          path: .buildozer_global
+          key: buildozer-global-${{ runner.os }}
+
+      - uses: actions/cache@v4
         with:
           path: .buildozer
-          key: ${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+          key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('buildozer.spec') }}
 
-      # Install Android SDK
       - name: Install Android SDK
         uses: android-actions/setup-android@v2
 
-      # Build APK using Buildozer action
+      - name: Add Android SDK to PATH
+        run: echo "$ANDROID_SDK_ROOT/tools/bin:${ANDROID_SDK_ROOT}/platform-tools" >> $GITHUB_PATH
+
+      - name: Verify aidl installation
+        run: aidl --version || true
+
       - name: Build with Buildozer
         uses: ArtemSBulgakov/buildozer-action@v1
         id: buildozer
         with:
-          command: android debug
+          command: buildozer -v android debug
           buildozer_version: master
 
-      # Upload APK artifact
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4   # تحديث upload-artifact
+        uses: actions/upload-artifact@v4
         with:
           name: package
           path: ${{ steps.buildozer.outputs.filename }}
